@@ -35,6 +35,13 @@ case class Out[C <: OutChannel[A], A](channel: C, v: A) extends Process
 /** Receive a value from `channel`, and pass it to `cont`. */
 case class In[C <: InChannel[A], A, P <: A => Process](channel: C, cont: P, timeout: Duration) extends Process
 
+case class InErr[C <: InChannel[A], A, P <: A => Process, Q <: Throwable => Process]
+                (channel : C,
+                 cont    : P,
+                 err     : Q,
+                 timeout : Duration)
+                extends Process
+
 case class Fork[P <: Process](p: () => P) extends Process
 
 sealed abstract class PNil() extends Process
@@ -164,6 +171,10 @@ package object dsl {
 
   /** Use channel `c` to receive a value, then pass it to the `cont`inuation. */
   def receive[C <: InChannel[A], A, P <: A => Process](c: C)(cont: P)(implicit timeout: Duration) = In[C,A,P](c, cont, timeout)
+  
+  def receiveErr[C <: InChannel[A], A, P <: Process, F <: A => P, Q <: Process, G <: Throwable => Q]
+           (c : C)(cont : F, err : G, timeout : Duration) : InErr[C,A,F,G] =
+  InErr[C,A,F,G](c, cont, err, timeout)
 
   /** Fork `p` as a separate process.
   *
@@ -279,6 +290,24 @@ package object dsl {
   def loop[V[X] <: RecVar[X]](v: V[Unit]): Loop[V] = Call[V, Unit](v, ())
 
   def eval(p: Process): Try[Unit] = Try(eval(Map(), Nil, p))
+  
+  def receiveMessage(i : InErr[_,_,_,_]) : Try[Process] = {
+  try {
+    val ic = i.channel
+    val v: Any = ic.receive()(i.timeout)
+    val cont = if (ic.synchronous) {
+      // We received a tuple containing a value and an ack channel
+      val (v2, ack) = v.asInstanceOf[Tuple2[Any, OutChannel[Unit]]]
+      ack.send(())
+      i.cont.asInstanceOf[Any => Process](v2)  
+    } else {
+      i.cont.asInstanceOf[Any => Process](v)
+    }
+    Success(cont)
+  } catch {
+    case e => Failure(e)
+  }
+}
 
   @annotation.tailrec
   def eval(env: Map[ProcVar[_], (_) => Process], lp: List[() => Process],
@@ -295,6 +324,12 @@ package object dsl {
         i.cont.asInstanceOf[Any => Process](v)
       }
       eval(env, lp, cont)
+    }
+    case ie: InErr[_,_,_,_] => {
+        receiveMessage(ie) match {
+          case Success(cont) => eval(env, lp, cont)
+          case Failure(e) => eval(env, lp, ie.err(e))
+          }
     }
     case o: Out[_,_] => {
       val oc = o.channel.asInstanceOf[OutChannel[Any]]

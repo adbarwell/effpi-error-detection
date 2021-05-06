@@ -111,7 +111,7 @@ def pluginOpts(verbose: Boolean, keepTmp: Boolean,
           })
         }.mkString(",")
 
-        Seq(addPlugin) ++ Seq(s"-P:${opts}") ++ {
+        Seq(addPlugin) ++ Seq(s"-p:${opts}") ++ {
           if (verbose) Seq(loggingOpt) else Seq()
         }
       }
