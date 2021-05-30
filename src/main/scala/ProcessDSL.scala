@@ -305,7 +305,7 @@ package object dsl {
     }
     Success(cont)
   } catch {
-    case e => Failure(e)
+    case e:RuntimeException => Failure(e)
   }
 }
 
