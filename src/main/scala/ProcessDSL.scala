@@ -173,7 +173,7 @@ package object dsl {
   def receive[C <: InChannel[A], A, P <: A => Process](c: C)(cont: P)(implicit timeout: Duration) = In[C,A,P](c, cont, timeout)
   
   def receiveErr[C <: InChannel[A], A, P <: Process, F <: A => P, Q <: Process, G <: Throwable => Q]
-           (c : C)(cont : F, err : G, timeout : Duration) : InErr[C,A,F,G] =
+           (c : C)(cont : F, err : G)(implicit timeout : Duration) : InErr[C,A,F,G] =
   InErr[C,A,F,G](c, cont, err, timeout)
 
   /** Fork `p` as a separate process.
