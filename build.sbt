@@ -17,6 +17,7 @@ lazy val effpi = (project in file(".")).
     //addCompilerPlugin("uk.ac.ic" %% "effpi-verifier" % "0.0.3"),
   )
 
+/*
 lazy val plugin = project
   .in(file("plugin"))
   .dependsOn(effpi)
@@ -140,3 +141,5 @@ lazy val pluginBenchmarks = project
     scalaVersion := dottyVersion,
     scalacOptions ++= pluginOpts(false, false, true, Some(-1)).value,
   )
+*/
+
